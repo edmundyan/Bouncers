@@ -52,8 +52,9 @@ public class Board extends JPanel {
 		
 		// Load up texture images
 		try {
-			File input = new File("/home/eyan/140b/HW5/bouncers/cosmos.jpg");
+			// File input = new File("/home/eyan/140b/HW5/bouncers/cosmos.jpg");
 			// File input = new File("/home/crystalt/ecs140b/hw5/bouncers/cosmos.jpg");
+			File input = new File("/mnt/hgfs/VMWare/140b/bouncers/cosmos.jpg");
 			BufferedImage image = ImageIO.read(input);
 			cosmos_bg = image.getScaledInstance((int)W,(int)H, 1);
 		} catch (IOException ie) {
@@ -61,8 +62,9 @@ public class Board extends JPanel {
 			setBackground(Color.black);
 		}
 		try {
-			File input = new File("/home/eyan/140b/HW5/bouncers/fire_1.gif");
+			// File input = new File("/home/eyan/140b/HW5/bouncers/fire_1.gif");
 			// File input = new File("/home/crystalt/ecs140b/hw5/bouncers/fire_1.gif");
+			File input = new File("/mnt/hgfs/VMWare/140b/bouncers/fire_1.gif");
 			BufferedImage image = ImageIO.read(input);
 			fire_scaled = image.getScaledInstance((int)ToySize*2,(int)ToySize*2, 1);
 		} catch (IOException ie) {
