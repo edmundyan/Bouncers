@@ -1,0 +1,89 @@
+import javax.swing.*;	import java.awt.*;	import java.lang.*;
+
+abstract public class Toy implements java.io.Serializable {
+	////////////////////
+	// Class Variables
+	////////////////////
+	protected float x, y;
+	protected float xinc, yinc;
+	protected float size;
+	protected Color myco, mycot;
+	protected final int toy_id;
+
+	////////////////////
+	// Constructor
+	////////////////////
+	public Toy(float x, float y, float xinc, float yinc, 
+							Color myco, Color mycot,
+							float size, int toy_id) {
+		this.x = x;	this.y = y;
+		this.xinc = xinc;	 this.yinc = yinc;
+		this.myco = myco;	this.mycot = mycot;
+		this.size = size; 
+		this.toy_id = toy_id;
+	}
+	
+	////////////////////
+	// MUTATORS
+	////////////////////
+	public void set(float sx, float sy, float sxinc, float syinc) {
+		x = sx;	
+		y = sy;
+		xinc = sxinc;		
+		yinc = syinc;
+	}
+
+	public void setX(float sx) {
+		x = sx;		
+	}
+	
+	public void setY(float sy) {
+		y = sy;		
+	}
+	
+	public void setXinc(float sxinc) {
+		xinc = sxinc;		
+	}
+
+	public void setYinc(float syinc) {
+		yinc = syinc;		
+	}
+	
+	////////////////////
+	// ACCESSORS
+	////////////////////
+	public float getX() {
+		return x;
+	}
+	
+	public float getY() {
+		return y;
+	}
+	
+	public float getXinc() {
+		return xinc;
+	}
+	
+	public float getYinc() {
+		return yinc;
+	}
+	
+	public float getSize() {
+		return size;
+	}
+	
+	public float getToyID() {
+		return toy_id;
+	}
+	
+	////////////////////
+	// CLASS METHODS
+	////////////////////
+	abstract public op void moveToyOneUnit (int H, int W, float gravity, 
+																					float punchVal, 
+																					cap void() gameOver);
+	
+	abstract public boolean isClicked (int mouse_x, int mouse_y);
+	
+	abstract public void mydraw (Graphics2D g2);
+}

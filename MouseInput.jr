@@ -1,0 +1,17 @@
+import javax.swing.*;	import java.awt.event.*;
+
+public class MouseInput extends MouseAdapter {
+
+	private final cap void (int, int) mouseClick;
+		
+	public MouseInput(cap void(int, int) mouseClick) {
+		this.mouseClick = mouseClick;
+	}
+	
+	// mousePressed is faster than mouseClicked because mouseClicked coalesce
+	// the clicks together
+	public void mousePressed(MouseEvent e) {
+		int x = e.getX(), y = e.getY();
+		send mouseClick( x, y );
+	}
+}

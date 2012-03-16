@@ -1,0 +1,55 @@
+import java.awt.*;	import java.lang.*;
+
+public class Main {
+	//// should be command line arg
+	private static final int winSize = 540, ToySize = 40;
+
+	public static void main(String [] args) {
+		String [] machs;
+		// create players (Windows)
+		if (args.length > 0) {
+			machs = args;
+		}
+		else {
+			// default: one machine, the local host.
+			// do this work here to make code below smoother.
+			machs = new String [1];
+			machs[0] = "localhost";
+		}
+		remote Window [] allWindows = new remote Window [machs.length];
+		for (int i = 0; i < machs.length; i++) {
+			 vm avm = new vm() on machs[i];
+			 allWindows[i] = new remote Window(winSize, ToySize, i) on avm;
+		}
+		remote Board [] allClientBoards = new remote Board [machs.length - 1];
+		remote Board [] hostBoard = new remote Board [1];
+		
+		// 1. initialize the board remote object pointers
+		hostBoard[0] = allWindows[0].getBoard();
+		for (int i = 0; i < machs.length - 1; i++) {
+				allClientBoards[i] = allWindows[i + 1].getBoard();
+		}
+		
+		// 2. send the links to the host and the clients
+		send hostBoard[0].links(allClientBoards);
+		for (int i = 0; i < machs.length - 1; i++) {
+				send allClientBoards[i].links(hostBoard);
+		}
+		
+		// 3. tell host to goahead() and simulate balls
+		send hostBoard[0].goahead();
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

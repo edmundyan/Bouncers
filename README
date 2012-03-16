@@ -1,0 +1,19 @@
+crystalt, Crystal Tse, cytse@ucdavis.edu 
+eyan, Edmund Yan, eyan@ucdavis.edu
+
+Desc:
+We wrote an interactive video game called Bouncers.  The goal of the game
+is to keep clicking the balls, preventing them from touching the fire.
+
+How to compile and run:
+jrgo [pc1 | pc2 | ... | pcN | localhost]*
+
+Examples:
+Single Player (Single Virtual Machine):
+jrgo			// defaults to localhost
+OR
+jrgo pc1	// explicitly state the machine to start up on
+
+Multiple Players (Multiple Virtual Machines):
+jrgo localhost pc3 pc4	// start up three VMs.  "localhost" will be the host
+												// board, all other arguments will be clients

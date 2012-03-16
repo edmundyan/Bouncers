@@ -1,0 +1,63 @@
+import java.awt.*;				import javax.swing.*;
+import java.awt.event.*;	import java.lang.*;
+import java.util.*;			 import edu.ucdavis.jr.JR;
+
+public class Window extends JFrame {
+
+	private final Board board;
+
+	public Window(int winSize, int ToySize,
+								int playerid) {
+		
+		if (playerid == 0) {
+			board = new BoardHost(winSize, winSize, ToySize);
+		}
+		else {
+			board = new BoardClient(winSize, winSize, ToySize);
+		}
+		Container contentPane = getContentPane();
+		SwingApplication app = new SwingApplication();
+		Component button = app.createComponents(board.startBall,
+												board.getGameStatus, 
+												board.getGameReady,
+												board.restartBoard,
+												board.newLevel,
+												board.getPoints
+												);
+		contentPane.add(button);
+
+		contentPane.add(board);
+
+		JPanel mainPanel = new JPanel();
+		mainPanel.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
+		setContentPane(mainPanel);
+		mainPanel.add(button);
+		mainPanel.add(board);
+		
+		// make window high enough for Board and button.
+		// Swing doesn't seem to honor these requests, so ask for more
+		// (even accounting for some spacing between components).
+		final int sizeFudge = 60;
+		setSize(winSize+sizeFudge,
+						winSize+sizeFudge+button.getHeight()+200);
+		setTitle("Bouncers!	Player "+playerid+
+						 " (type `q' to quit)");
+
+		// set up window listeners
+		final Board boardfinal = board;
+		addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent e) {
+				JR.exit(0);
+			}
+			// when move into window, give focus to board.
+			public void windowActivated(WindowEvent e) {
+				 boardfinal.requestFocus();
+			}
+		});
+		setVisible(true);
+	}
+
+	public op remote Board getBoard() {
+		return board.remote;
+	}
+}

@@ -1,0 +1,203 @@
+import java.awt.*;	import javax.swing.*;	
+import java.lang.*; import java.util.*;
+
+public class BoardHost extends Board {
+	////////////////////
+	// Class Variable
+	////////////////////
+	// Array of remote objects for all BoardClients
+	remote Board [] allClientBoards;
+
+	////////////////////
+	// Constructor
+	////////////////////
+	public BoardHost(int W, int H, int ToySize) {
+		super(W, H, ToySize);
+	}
+	
+	////////////////////
+	// Class Operations (Game)
+	////////////////////
+	// Gets triggered in moveToyOneUnit, when Ball hits the bottom wall
+	public op void gameOver() {
+		// Freeze game screen
+		gameStatus = 0;
+		GRAVITY = 0;
+		PUNCH = 0;
+		
+		// Sets all balls velocity to 0, so that they are "frozen"
+		synchronized(myToys) {
+			Iterator<Ball> ball_itr= myToys.iterator();
+			Ball ball;
+			while(ball_itr.hasNext())
+			{
+				ball = ball_itr.next();
+				ball.setXinc(0);
+				ball.setYinc(0);
+			}
+		}
+		
+		// Tells all BoardClients that game is over
+		for(int i = 0; i < allClientBoards.length; i++) {
+			// update client's gameStatus
+			send ((remote BoardClient)allClientBoards[i]).gameOver();
+		}
+	}
+
+	/////////////////////////
+	// Class Operations (Board)
+	/////////////////////////
+	public op void links(remote Board [] allClientBoards);
+	public op void goahead();
+	public op void clientDone();	// for the clients to return to
+	
+	/////////////////////////
+	// boardManager () - Manages all ball movement and collision. Game logic.
+	/////////////////////////
+	protected op void boardManager() {
+		Ball b_i, b_j;
+		Iterator<Ball> ball_itr;
+		gameReady = 1;
+		
+		// Loops forever while the program is running.
+		while(true) {
+			if(gameStatus == 1) {		 // If game is running
+				synchronized(myToys) {
+				
+					// 1. check for ball to ball collisions!
+					for(int i = 0; i < myToys.size(); i++){
+						for(int j = i + 1; j < myToys.size(); j++){
+							b_i = (Ball) myToys.get(i);
+							b_j = (Ball) myToys.get(j);
+							if(b_i.collidesWithBall(b_j)) {
+								send b_i.doCollision(b_j);
+							}
+						}
+					}
+				
+					// 2. Move ball up one, checking for walls
+					ball_itr = myToys.iterator();
+					while(ball_itr.hasNext())
+					{
+						b_i = ball_itr.next();
+						send b_i.moveToyOneUnit(H, W, GRAVITY, PUNCH, gameOver);
+					}
+					
+					// 3. Send myToys to allClientBoards. Send them clientDone so they
+					//		can send it back to us. Acts as a barrier.
+					for(int i = 0; i < allClientBoards.length; i++) {
+						send ((remote BoardClient)allClientBoards[i]).
+							receiveToys(myToys, clientDone);
+					}
+				}
+				
+				// 4. Receive clientDone from allClientBoards, which ensures that all 
+				//		clients have received myToys before we loop again. Do this before 
+				//		we proceed to the next time step.
+				for(int i = 0; i < allClientBoards.length; i++) {
+					receive clientDone();
+				}
+
+			} 
+			else {		// Else game is not running
+				// game is over, but keep sending myToys to client so that their
+				// animations (ie. fire) keeps moving
+				for(int i = 0; i < allClientBoards.length; i++) {
+					send 
+						((remote BoardClient)allClientBoards[i]).receiveToys(
+							myToys, clientDone
+						);
+				}
+				// Receive clientDone from allClientBoards, which ensures that all 
+				// clients have received myToys before we loop again. Do this before 
+				// we proceed to the next time step.
+				for(int i = 0; i < allClientBoards.length; i++) {
+					receive clientDone();
+				}
+			}
+			
+			repaint();
+			try {
+				Thread.sleep(sleep);
+			} catch (Exception e) {e.printStackTrace();}
+		
+		}
+	}
+	
+	/////////////////////////
+	// restartBoard () - Triggered by SwingApplication class. Called whenever 
+	// the player for this Board presses the Start button. Both BoardHost and 
+	// BoardClients are able to start a new game. "first" says whether or not 
+	// this Board pressed the start button.
+	/////////////////////////
+	public op void restartBoard(boolean first) {
+		// 1. Initialize values for new game.
+		gameStatus = 1;
+		current_level = 1;
+		points = 0;
+		
+		// 2. Set PUNCH and GRAVITY.
+		GRAVITY = GRAVITY_INIT;
+		PUNCH = PUNCH_INIT;
+		
+		// 3. Delete all existing balls (if any).
+		synchronized(myToys) {
+			myToys = Collections.synchronizedList(new ArrayList());
+		}
+		
+		// 4. Update client's gameStatus.
+		for(int i = 0; i < allClientBoards.length; i++) {
+			send ((remote BoardClient)allClientBoards[i]).restartBoard(false);
+		}
+	}
+	
+	/////////////////////////
+	// mymouseclick () - Triggered when "this" board receieves clicks, or when a 
+	// BoardClient sends clicks	
+	/////////////////////////	
+	public op void mymouseclick(int mouse_x, int mouse_y) {
+		synchronized(myToys) {
+			Iterator<Ball> ball_itr= myToys.iterator();
+			Ball ball;
+			// Iterates through all myToys, checking if any of them have 
+			// been clicked
+			while(ball_itr.hasNext())
+			{
+				ball = ball_itr.next();
+				if(ball.isClicked(mouse_x, mouse_y)){	 // If ball was clicked
+					ball.punch(mouse_x, mouse_y, PUNCH);	// Punch the ball up
+					plusPoints(current_level);						// Add points
+					
+					// update client's point value
+					for(int i = 0; i < allClientBoards.length; i++) {
+						send 
+							((remote BoardClient)allClientBoards[i]).plusPoints(
+								current_level
+							);
+					}
+					
+					// Break, because we assume that balls don't overlap, and we can 
+					// only click one ball at a time.
+					break;
+				}
+			}
+		}
+	}
+	/////////////////////////
+	// startup - Starts when the class object is created.
+	///////////////////////// 
+	process startup {
+		// Need to receive allClientBoards before any ballManager starts.
+		receive links(allClientBoards);
+		
+		// Wait for all boards to be initialized before starting boardManager().
+		for(int i = 0; i < allClientBoards.length; i++) {
+			receive goahead();
+		}
+		
+		receive goahead();	// from Main.jr
+
+		// Starts the boardManager.
+		boardManager();
+	}
+}

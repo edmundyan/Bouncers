@@ -1,0 +1,148 @@
+import javax.swing.*;	import java.awt.*;	import java.awt.event.*;
+
+public class SwingApplication {
+	////////////////////
+	// Class Variables
+	////////////////////
+	private static String stringInstructions = 
+		"Click on the balls to keep them up in the air.";
+	private static String labelPrefixNumBalls = "Number of balls: ";
+	private static String stringLevel = "Level: ";
+	private static String stringPoints = "Points: ";
+	private int numBalls = 0;
+	private boolean first_run = false;
+	private int cur_level = 1;
+	
+	// Variables for refreshing screen and displaying progressBar 
+	private int delay = 100;						// milliseconds between refreshes
+	private int counter = 0;
+	private int maxCounter = 200;
+
+	
+	private JProgressBar progressBar; // shows how long until new ball
+
+	public Component createComponents(
+										 cap void (Color, Color, int) startBall,
+										 cap int () getGameStatus,
+										 cap int () getGameReady,
+										 cap void (boolean) restartGame,
+										 cap int () newLevel,
+										 cap int () getPoints
+										 ) {
+		final JLabel labelBalls = new JLabel(labelPrefixNumBalls + numBalls);
+		final JLabel labelInstructions = new JLabel(stringInstructions);
+		final JLabel labelLevel = new JLabel(stringLevel + cur_level);
+		final JLabel labelPoints = new JLabel(stringPoints + "0");
+		
+		// Set up the button, which creates 2 nwe balls when clicked
+		final JButton button = new JButton("Start game!");
+		
+		////////////////////
+		// Capabilities: Passed in as function arguments. Need these to 
+		// communicate with Board. Need to make them final since used 
+		// within inner class.
+		////////////////////
+		final cap void (Color, Color, int) sf = startBall; 
+		final cap int () gs = getGameStatus; 
+		final cap int () gr = getGameReady; 
+		final cap void (boolean) rs = restartGame;
+		final cap int () nl = newLevel;
+		final cap int () gp = getPoints;
+		
+		// This task refreshes the board appropriately whenever timer triggers it.
+		ActionListener taskPerformer = new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				int gameStatus = gs();		// Receives from Board.
+				
+				if (gameStatus == 1) {		// If game is running.
+					// If this is the first game run
+					if (first_run) {					
+						// Initialize values for the Board, since it is possible that this
+						// Board never actually pressed the start button. Hacky.
+						button.setEnabled(false);
+						button.setText("Good luck!");
+						numBalls = 2;	
+						labelBalls.setText(labelPrefixNumBalls + numBalls);
+						labelLevel.setText(stringLevel + 1);
+						first_run = false;
+						sf(Color.blue, Color.white, (1));
+						sf(Color.red, Color.white, (2));
+					}
+					
+					// Every maxCounter time steps, drop two more balls
+					if (counter == maxCounter) {	
+						sf(Color.blue, Color.white, (numBalls + 1));	// Drop one ball
+						sf(Color.red, Color.white, (numBalls + 2));	 // Drop another ball
+						numBalls += 2;			// Increment ball counter
+						labelBalls.setText(labelPrefixNumBalls + numBalls);
+						counter = 0;
+						progressBar.setValue(0);
+						cur_level = nl();	 // Increment level
+						labelLevel.setText(stringLevel + cur_level);
+					}
+					
+					// Update progress bar.
+					else {
+						counter++;
+						double value = ((double)counter/(double)maxCounter)*100.0;
+						progressBar.setValue((int)value);
+					}
+					labelPoints.setText(stringPoints + gp());
+				} else {				// Else game is over.
+					// gameReady will say whether or not all of the clients have started
+					// up their boardManager yet.	The host cannot start the game until
+					// this has happened, or there will be Java Runtime errors.
+					int gameReady = gr();
+					if(gameReady == 1) {
+						// game over
+						counter = 0;
+						progressBar.setValue(0);
+						button.setEnabled(true);
+						button.setText("Start game!");
+						first_run = true;
+					} else {
+						button.setText("Waiting for clients to load ...");
+						button.setEnabled(false);
+					}
+				}
+			}
+		};
+		
+		////////////////////
+		// START THE TIMER. Every "delay" milliseconds, this timer will 
+		// trigger taskPerformer.
+		////////////////////
+		new Timer(delay, taskPerformer).start(); 
+		
+		// Start button
+		button.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				rs(true);	// restart board. calls this operation in Board.
+				numBalls = 2;
+				labelBalls.setText(labelPrefixNumBalls + numBalls);
+				button.setEnabled(false);
+				button.setText("Good luck!");
+			}
+		});
+		
+		// Progress bar. Gets refreshed in taskPerformer.
+		progressBar = new JProgressBar(0, 100);
+		progressBar.setValue(0);
+		progressBar.setStringPainted(true);
+		
+		// Arrange components inside pane. 
+		// Put space between a top-level container and its contents:
+		// Put the contents in a JPanel that has an "empty" border.
+		JPanel pane = new JPanel();			// (top,left,bottom,right)
+		pane.setBorder(BorderFactory.createEmptyBorder(30,30,10,30));
+		pane.setLayout(new GridLayout(0, 1));
+		pane.add(labelInstructions);
+		pane.add(labelLevel);
+		pane.add(labelPoints);
+		pane.add(button);
+		pane.add(labelBalls);
+		pane.add(progressBar);
+
+		return pane;
+	}
+}

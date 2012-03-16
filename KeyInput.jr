@@ -1,0 +1,16 @@
+import javax.swing.*;	import java.awt.event.*;
+import edu.ucdavis.jr.JR;
+
+public class KeyInput extends KeyAdapter {
+	public KeyInput() { }
+
+	public void keyPressed(KeyEvent e) {
+		char c = e.getKeyChar();
+		switch(c) {
+			case 'q':		case 'Q':
+			case '\177': case '\003':
+				{JR.exit(0);}
+			default: break; // just ignore
+		}
+	}
+}

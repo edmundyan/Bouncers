@@ -1,0 +1,193 @@
+import java.awt.*;	import javax.swing.*;	
+import java.lang.*; import java.util.*; 
+
+import java.awt.image.BufferedImage;
+import java.io.*;
+import javax.imageio.ImageIO;
+
+public class Board extends JPanel {
+	////////////////////
+	// Class Variables
+	////////////////////
+	protected final int W, H, ToySize;
+	protected java.util.List myToys;
+	private Random r = new Random();
+	
+	// Class Variables (GUI)
+	// =====================
+	private Image cosmos_bg, fire_scaled;
+	private int fire_animate = 0;
+	private int fire_animate_delay = 0;	// number of repaints until we 
+																			// "animate" the fire texture
+	
+	// Class Variables (Game)
+	// ======================
+	// sleep	-	amount of delay between repaint()
+	protected static final int sleep = 5;
+
+	// GAMESPEED	-	coefficient that linearly scales GRAVITY/PUNCH forces
+	protected static final float GAMESPEED = 10f;
+	
+	// GRAVITY/PUNCH_INIT	-	initial values for gravity and punch (start game)
+	protected static final float GRAVITY_INIT = -0.01f / GAMESPEED;
+	protected static final float PUNCH_INIT = 10 / GAMESPEED;
+	
+	// GRAVITY/PUNCH	-	current values for gravity and punch. Will change
+	// on every level-up
+	protected float GRAVITY;
+	protected float PUNCH;
+	
+	protected int gameStatus = 0;	// game is OFF initially
+	protected int gameReady = 0;	// game is NOT ready until all clients are 
+																// loaded up in their boardManager()
+	protected int current_level;
+	protected int points;
+	
+	////////////////////
+	// Constructor
+	////////////////////
+	public Board(int W, int H, int ToySize) {
+		this.W = W;	this.H = H;	this.ToySize = ToySize;
+		myToys = Collections.synchronizedList(new ArrayList());
+		
+		// Load up texture images
+		try {
+			File input = new File("/home/eyan/140b/HW5/bouncers/cosmos.jpg");
+			// File input = new File("/home/crystalt/ecs140b/hw5/bouncers/cosmos.jpg");
+			BufferedImage image = ImageIO.read(input);
+			cosmos_bg = image.getScaledInstance((int)W,(int)H, 1);
+		} catch (IOException ie) {
+			System.out.println("Error:"+ie.getMessage());
+			setBackground(Color.black);
+		}
+		try {
+			File input = new File("/home/eyan/140b/HW5/bouncers/fire_1.gif");
+			// File input = new File("/home/crystalt/ecs140b/hw5/bouncers/fire_1.gif");
+			BufferedImage image = ImageIO.read(input);
+			fire_scaled = image.getScaledInstance((int)ToySize*2,(int)ToySize*2, 1);
+		} catch (IOException ie) {
+			System.out.println("Error:"+ie.getMessage());
+		}
+		
+		addMouseListener(new MouseInput(mymouseclick));
+		addKeyListener(new KeyInput());
+	}
+	
+	////////////////////
+	// Class Operations (Game)
+	////////////////////
+	public op int getGameStatus() {
+		return gameStatus;
+	}
+	
+	public op int getGameReady() {
+		return gameReady;
+	}
+	
+	public op int newLevel() {
+		current_level++;
+		
+		// increase gravity and punch values
+		GRAVITY *= 1.5f;
+		PUNCH *= 1.5f;
+		points += current_level * 10;	// BONUS POINTS WooT!
+		return current_level;
+	}
+	
+	// Gets triggered when someone clicked on a ball successfully. 
+	public op void plusPoints(int p) {
+		points += p;
+	}
+	
+	public op int getPoints() {
+		return points;
+	}
+	
+	// "abstract", defined by BoardHost and BoardClient
+	public op void gameOver();
+	public op void restartBoard(boolean first);
+	
+	////////////////////
+	// Class Operations (Board)
+	////////////////////	
+	public op void links(remote Board []);	
+	public op void goahead();	// called by main() to BoardHost
+	public op void mymouseclick(int mouse_x, int mouse_y);
+	
+	/////////////////////////
+	// startBall () - starts a new Ball at a random position on the top half
+	// of the board.	Adds it to the myToys list
+	/////////////////////////
+	public op void startBall(Color myco, Color mycot, int ball_id) {
+		int x = r.nextInt(W);
+		int y = r.nextInt(H/2);	// always start at top half of screen
+		
+		float Xinc = .5f / GAMESPEED;
+		float Yinc = 0 / GAMESPEED;
+		Ball nb = new Ball(x, y, Xinc, Yinc, myco, mycot, ToySize, ball_id);
+		synchronized(myToys) {
+			myToys.add(nb);
+		}
+	} 
+	
+	////////////////////
+	// Class Methods (Graphics)
+	////////////////////
+	public void paintComponent (Graphics g) {
+		super.paintComponent(g);
+		
+		Graphics2D g2 = (Graphics2D) g;
+		g2.drawImage( cosmos_bg, 0,0, null);
+		
+		// synchronized access is necessary
+		synchronized(myToys) {
+			Iterator ti = myToys.iterator();
+			while (ti.hasNext()) {
+				Toy t = (Toy) ti.next();
+				t.mydraw(g2);
+			}
+		}
+		
+		// Add FIRE to the bottom of the board
+		// Every sleep*10 repaint() calls, we will alternate the starting
+		// position of fire (x_fire), to give the illusion of animation
+		for(int x_fire = (-ToySize + ToySize * fire_animate / 2); 
+				x_fire < W; 
+				x_fire += ToySize) {
+			g2.drawImage( fire_scaled, (int)x_fire, (int)H-ToySize, null);
+		}
+		
+		fire_animate_delay++;
+		if( fire_animate_delay > (sleep * 10)) {
+			fire_animate = 1 - fire_animate;
+			fire_animate_delay = 0;
+		}
+	}
+	
+	/**
+	 * Easy way to show an image: load it into a JLabel
+	 * and add the label to a container in your gui.
+	 */
+	private static void showIcon(BufferedImage image) {
+			ImageIcon icon = new ImageIcon(image);
+			JLabel label = new JLabel(icon, JLabel.CENTER);
+			JOptionPane.showMessageDialog(null, label, "icon", -1);
+	}
+	
+	public Dimension getMaximumSize(){
+		return new Dimension(W,H);
+	}
+	
+	public Dimension getMinimumSize(){
+		return getMaximumSize();
+	}
+	
+	public Dimension getPreferredSize(){
+		return getMaximumSize();
+	}
+	
+	// need this to make "tab" switch between button and board.
+	public boolean isFocusTraversable(){
+		return true;
+	}	
+}

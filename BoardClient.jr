@@ -1,0 +1,93 @@
+import java.awt.*;	import javax.swing.*;	
+import java.lang.*; import java.util.*;
+
+// BoardClient represents all the "client" boards, 
+// and they receive messages from BoardHost about 
+// all the balls
+public class BoardClient extends Board {
+	////////////////////
+	// Class Variable
+	////////////////////
+	// Remote object to the hostBoard
+	remote Board [] hostBoard;	// NOTE: Array of size 1
+	
+	////////////////////
+	// Constructor
+	////////////////////
+	public BoardClient(int W, int H, int ToySize) {
+		super(W, H, ToySize);
+	}
+	
+	////////////////////
+	// Class Operations (Game)
+	////////////////////
+	// Gets triggered when BoardHost finds out game is over. Sent by BoardHost.
+	public op void gameOver() {
+		gameStatus = 0;
+	}
+	
+ 	////////////////////
+	// Class Operations (Board)
+	////////////////////	 
+	public op void links(remote Board [] hostBoard);
+	
+	public op void receiveToys(java.util.List myToys, cap void () clientDone);
+	
+	/////////////////////////
+	// boardManager () - Paints the balls to BoardClient's window
+	/////////////////////////
+	protected op void boardManager() {
+		gameReady = 1;
+		cap void () clientDone; // Sent to BoardHost to tell it	
+														// that we received the toys. 
+		// Updates board for clients
+		while(true) {
+			// Receives toys from BoardHost 
+			receive receiveToys(myToys, clientDone);	
+			send clientDone();		// Acts as a barrier.
+			repaint();
+		}
+	}
+	
+	/////////////////////////
+	// restartBoard () - Triggered by SwingApplication class. Called whenever	
+	// the player for this Board presses the Start button. Both BoardHost and 
+	// BoardClients are able to start a new game. "first" says whether or not 
+	// this Board pressed the start button.
+	/////////////////////////	
+	public op void restartBoard(boolean first) {
+		// Initialize values for new game.
+		gameStatus = 1; 
+		current_level = 1;
+		points = 0;
+		
+		// If "this" Board pressed the start button, tell BoardHost to restart 
+		// game, and BoardHost will in turn send the message to other BoardClients 
+		if(first) {
+			// prevent infinite recursion
+			send hostBoard[0].restartBoard(true);
+		}
+	}
+
+	/////////////////////////
+	// mymouseclick () - Called when "this" Board receives a mouse click. 
+	// Tells BoardHost about the mouse click, so that BoardHost can process it.
+	/////////////////////////	
+	public op void mymouseclick(int mouse_x, int mouse_y) {
+		send hostBoard[0].mymouseclick(mouse_x, mouse_y);
+	}
+
+	/////////////////////////
+	// startup - Starts when the class object is created.
+	///////////////////////// 
+	process startup {
+		// Stores the remote object to the host
+		receive links(hostBoard);
+		
+		// Tells BoardHost that we are created.
+		send hostBoard[0].goahead();
+		
+		// Starts the boardManager.
+		boardManager();
+	}
+}
